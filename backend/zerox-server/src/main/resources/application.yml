@@ -1,0 +1,85 @@
+# Web 服务器基础配置
+server:
+  # 服务监听端口，可通过环境变量 SERVER_PORT 覆盖
+  port: ${SERVER_PORT:8080}
+  # 收到停机信号后等待请求处理完成
+  shutdown: graceful
+  servlet:
+    # 应用根上下文路径
+    context-path: /
+
+# Spring Boot 通用配置
+spring:
+  application:
+    # 应用名称，也用于日志和监控标识
+    name: zerox
+  profiles:
+    # 默认启用本地环境，可通过环境变量切换
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  lifecycle:
+    # 优雅停机阶段的最长等待时间
+    timeout-per-shutdown-phase: 20s
+  threads:
+    virtual:
+      # 使用 Java 25 虚拟线程处理请求
+      enabled: true
+  jackson:
+    # JSON 序列化时忽略值为 null 的字段
+    default-property-inclusion: non_null
+
+# OpenAPI 接口文档配置
+springdoc:
+  api-docs:
+    # 默认生成 OpenAPI JSON 文档
+    enabled: true
+    # OpenAPI JSON 访问路径
+    path: /v3/api-docs
+  swagger-ui:
+    # 默认启用 Swagger UI
+    enabled: true
+    # Swagger UI 入口路径
+    path: /swagger-ui.html
+    # 禁用 Springdoc 自带的示例文档地址
+    disable-swagger-default-url: true
+
+# Actuator 运行状态监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        # 仅对外暴露健康检查和应用信息端点
+        include: health,info
+  endpoint:
+    health:
+      # 健康检查不返回组件明细，避免泄露内部信息
+      show-details: never
+  info:
+    env:
+      # 允许 Actuator 读取下方 info 配置
+      enabled: true
+
+# Actuator info 端点展示的应用信息
+info:
+  app:
+    name: ${spring.application.name}
+    version: ${zero-x.version}
+
+# Zero-X 自定义应用配置
+zero-x:
+  # 当前应用版本
+  version: "0.1.0"
+  # REST API 统一路径前缀
+  api-prefix: /api
+  cors:
+    # 默认允许本机前端开发服务跨域访问
+    allowed-origin-patterns:
+      - "http://localhost:*"
+      - "http://127.0.0.1:*"
+
+# 通用日志级别配置
+logging:
+  level:
+    # 框架默认输出 INFO 及以上级别日志
+    root: INFO
+    # 项目代码默认输出 INFO 及以上级别日志
+    com.zerox: INFO

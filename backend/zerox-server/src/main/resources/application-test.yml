@@ -1,0 +1,27 @@
+# 自动化测试环境配置
+spring:
+  datasource:
+    # 测试使用 H2 内存数据库，避免依赖外部 PostgreSQL
+    driver-class-name: org.h2.Driver
+    # 启用 PostgreSQL 兼容模式，尽量贴近正式数据库行为
+    url: jdbc:h2:mem:zerox_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    # H2 默认测试用户
+    username: sa
+    # 内存数据库不设置密码
+    password:
+  sql:
+    init:
+      # 当前没有初始化脚本，不执行自动 SQL 初始化
+      mode: never
+
+# 测试保留 OpenAPI JSON，关闭无需渲染的 Swagger UI
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+
+# 测试环境仅输出项目 INFO 及以上级别日志
+logging:
+  level:
+    com.zerox: INFO

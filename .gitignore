@@ -1,1 +1,16 @@
+# MacOS
 .DS_Store
+
+# Java / Maven
+**/target/
+
+# Runtime files
+logs/
+backend/logs/
+backend/*.log
+
+# WorkBuddy
+.workbuddy/
+
+# Ide
+.vscode/

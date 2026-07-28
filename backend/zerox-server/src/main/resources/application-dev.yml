@@ -1,0 +1,41 @@
+# 共享开发环境配置
+spring:
+  datasource:
+    # PostgreSQL JDBC 驱动
+    driver-class-name: org.postgresql.Driver
+    # 开发环境数据库地址，可通过环境变量覆盖
+    url: ${POSTGRESQL_DB_URL:jdbc:postgresql://localhost:5432/zerox_dev}
+    # 开发环境数据库用户名
+    username: ${POSTGRESQL_DB_USERNAME:postgres}
+    # 开发环境数据库密码
+    password: ${POSTGRESQL_DB_PASSWORD:postgres}
+    hikari:
+      # 数据源连接池名称
+      pool-name: ZeroxHikariPool
+      # 最小空闲连接数，可按部署资源调整
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      # 最大连接数，可按部署资源调整
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      # 获取数据库连接的超时时间，单位毫秒
+      connection-timeout: 30000
+
+# 开发环境开放接口文档，便于联调
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# 开发环境前端跨域配置
+zero-x:
+  cors:
+    allowed-origin-patterns:
+      # 部署时应通过环境变量指定实际前端地址
+      - ${CORS_ALLOWED_ORIGIN:http://localhost:*}
+
+# 开发环境日志配置
+logging:
+  level:
+    com.zerox: INFO
+  file:
+    path: ./logs

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 引入 Spring Boot 提供的 Logback 默认变量与转换规则 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 从 Spring Environment 读取应用名称、日志目录和日期格式 -->
+    <springProperty scope="context" name="APP_NAME"
+                    source="spring.application.name" defaultValue="zerox"/>
+    <springProperty scope="context" name="LOG_PATH"
+                    source="logging.file.path" defaultValue="./logs"/>
+    <springProperty scope="context" name="LOG_DATEFORMAT_PATTERN"
+                    source="logging.pattern.dateformat" defaultValue="yyyy-MM-dd HH:mm:ss.SSS"/>
+
+    <!-- 控制台日志保留颜色，文件日志使用纯文本；traceId 为空时输出短横线 -->
+    <property name="CONSOLE_PATTERN"
+              value="%clr(%d{${LOG_DATEFORMAT_PATTERN}}){faint} %clr(%-5level) %clr([%thread]){faint} %clr(%logger{36}){cyan} traceId=%X{traceId:--} - %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{48} traceId=%X{traceId:--} - %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <!-- 控制台输出 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 文件 appender 仅在需要落盘的环境中创建，测试环境不会产生未引用警告 -->
+    <springProfile name="local | dev | prod">
+    <!-- 主日志文件保存 INFO 及以上日志，按日期及单文件大小滚动压缩 -->
+    <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-info.log</file>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/archive/${APP_NAME}-info.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- ERROR 文件只保存错误日志，便于告警采集与故障排查 -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/archive/${APP_NAME}-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!-- 异步写入文件；关闭调用方信息采集以减少日志开销 -->
+    <appender name="ASYNC_INFO_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="INFO_FILE"/>
+    </appender>
+
+    <appender name="ASYNC_ERROR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="ERROR_FILE"/>
+    </appender>
+    </springProfile>
+
+    <!-- 本地与共享开发环境：同时输出控制台和滚动文件 -->
+    <springProfile name="local | dev">
+        <root>
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_INFO_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 自动化测试环境：只输出控制台，不产生测试日志文件 -->
+    <springProfile name="test">
+        <root>
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- 生产环境：保留控制台供容器采集，同时写入滚动文件 -->
+    <springProfile name="prod">
+        <root>
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_INFO_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 未显式匹配环境时提供安全兜底，避免应用无日志输出 -->
+    <springProfile name="!local &amp; !dev &amp; !test &amp; !prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+</configuration>
