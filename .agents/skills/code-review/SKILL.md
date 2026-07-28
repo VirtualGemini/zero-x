@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs independent reviews in parallel sub-agents, then requires the primary agent to verify every lead and independently cover the complete diff before issuing an evidence-backed final report. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
 ---
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
@@ -8,7 +8,7 @@ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
 - **Standards** — does the code conform to this repo's documented coding standards?
 - **Spec** — does the code faithfully implement the originating issue / PRD / spec?
 
-Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
+Run both axes as **parallel sub-agents** so they don't pollute each other's context. Treat their output only as investigation input: the primary agent owns the review result and must validate every final finding against primary evidence.
 
 The issue tracker should have been provided to you — run `/setup-matt-pocock-skills` if `docs/agents/issue-tracker.md` is missing.
 
@@ -59,6 +59,8 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both.
 
+Sub-agents produce review leads, not final findings. Do not delegate the final pass/fail judgement or the completeness claim to them.
+
 **Standards sub-agent prompt** — include:
 
 - The full diff command and commit list.
@@ -73,11 +75,34 @@ Send a single message with two `Agent` tool calls. Use the `general-purpose` sub
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-### 5. Aggregate
+### 5. Verify every lead and complete the review
 
-Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings — the two axes are deliberately separate (see _Why two axes_).
+This phase is mandatory. Treat every sub-agent finding as an **unverified lead**; never copy it directly into the final report.
 
-End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes — that's the reranking the separation exists to prevent.
+1. Enumerate the complete change surface with `git diff --name-status <fixed-point>...HEAD` and reopen the full diff. Account for every changed file, including files neither sub-agent mentioned.
+2. For each lead, open the cited file and inspect the relevant code in full context, not only the diff hunk. Confirm that the cited location and described behaviour are accurate.
+3. Validate Standards leads against the actual documented rule or smell baseline, including repo overrides and tooling enforcement. Validate Spec leads against the exact requirement and the implementation diff.
+4. Trace relevant callers, tests, error paths, and boundary behaviour. Run focused tests or checks when they can materially confirm or refute a claim.
+5. Require each retained finding to describe a real defect or meaningful risk, concrete impact, and a practical remediation. Correct or discard leads with unsupported locations, insufficient evidence, speculative impact, or no remediation value.
+6. Independently inspect every changed file and map every specification requirement to its implementation status. Do this even when the sub-agents reported no issue.
+7. Add evidence-backed findings the sub-agents missed. Keep an internal disposition for every lead: verified, corrected, or discarded.
+
+If repository access, spec access, generated artifacts, dependencies, or test execution limit verification, record the limitation. Do not claim the review is complete when any material part of the diff or spec could not be inspected.
+
+### 6. Write the verified report
+
+Rewrite the report from verified evidence; do not reproduce or attribute sub-agent output. Keep the two axes separate under `## Standards` and `## Spec` headings (see _Why two axes_).
+
+For every final finding, provide:
+
+- a supported file and line location;
+- the relevant code, diff, standard, or spec evidence;
+- the concrete impact;
+- a practical remediation.
+
+Include only findings that survived step 5. If an axis has no verified findings, say so and mention any remaining test gap or residual risk. Clearly state evidence or access limitations and label the review partial when they prevent full verification.
+
+End with a one-line summary: total **verified** findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes — that's the reranking the separation exists to prevent.
 
 ## Why two axes
 
